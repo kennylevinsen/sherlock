@@ -2,7 +2,6 @@ use gio::glib::Bytes;
 use gtk4::{gdk, prelude::*, Image, ListBoxRow};
 use regex::Regex;
 use std::collections::HashMap;
-use meval::eval_str;
 
 use crate::launcher::Launcher;
 
@@ -81,8 +80,8 @@ impl Tile {
 
                     // Clipboard matches a hex color
                 } 
-            } else if let Ok(result) = eval_str(clipboard_content){
-                return Tile::calc_tile(launcher, index, clipboard_content, Some(result));
+            } else if let Ok(result) = rcalc_lib::parse::eval(clipboard_content, &mut rcalc_lib::parse::CalcState::new()) {
+                return Tile::calc_tile(launcher, index, clipboard_content, Some(result.to_string()));
             }
 
             if is_valid == 1 {
