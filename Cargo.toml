@@ -25,6 +25,7 @@ toml = "0.8.19"
 wayland-protocols = "0.32.5"
 simd-json = "0.15"
 rcalc_lib = "1.0"
+chrono = "0.4.40"
 
 [package.metadata]
 assets = ["resources/*"]

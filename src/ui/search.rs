@@ -50,7 +50,12 @@ pub fn search(
 
 }
 
-
+fn update_time(time_label: &Label, date_top: &Label, date_bottom: &Label) {
+    let now = chrono::Local::now();
+    time_label.set_text(&now.format("%R").to_string());
+    date_top.set_text(&now.format("%A, week %U").to_string());
+    date_bottom.set_text(&now.format("%d %B %Y").to_string());
+}
 
 fn construct_window(
     launchers: &Vec<Launcher>,
@@ -73,6 +78,17 @@ fn construct_window(
 
     // Initialize the builder with the correct path
     let builder = Builder::from_resource("/dev/skxxtz/sherlock/ui/search.ui");
+
+    let time_label: Label = builder.object("time-bar").unwrap();
+    let date_top: Label = builder.object("date-top").unwrap();
+    let date_bottom: Label = builder.object("date-bottom").unwrap();
+
+    update_time(&time_label, &date_top, &date_bottom);
+
+    glib::timeout_add_local(std::time::Duration::from_millis(5000), move || {
+        update_time(&time_label, &date_top, &date_bottom);
+        glib::ControlFlow::Continue
+    });
 
     // Get the requred object references
     let vbox: HVBox = builder.object("vbox").unwrap();

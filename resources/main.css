@@ -67,6 +67,39 @@ window {
     border: 2px solid hsl(var(--border));
 }
 
+#time-bar {
+    outline: none;
+    /* border: 1px solid hsla(var(--border), 1); */
+    background: hsla(var(--background), 1);
+    min-height: 40px;
+    color: hsl(var(--text));
+    font-size: 48px;
+    padding-left: 10px;
+}
+
+#date-top {
+    outline: none;
+    background: hsla(var(--background), 1);
+    color: hsl(var(--text));
+    min-height: 0;
+    font-size: 14px;
+    padding-left: 10px;
+    padding-top: 10px;
+}
+
+#date-bottom {
+    outline: none;
+    background: hsla(var(--background), 1);
+    color: hsl(var(--text));
+    font-size: 20px;
+    padding-left: 10px;
+}
+
+#datetime-bar-holder {
+    padding: 10px 10px 0px 10px;
+    min-height: 40px;
+}
+
 /* SEARCH PAGE */
 #search-bar {
     outline: none;
