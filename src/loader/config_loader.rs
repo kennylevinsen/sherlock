@@ -1,37 +1,37 @@
 use std::fs;
-use std::path::Path;
 
-use super::util::{Config, SherlockError, SherlockFlags, SherlockErrorType};
+use super::util::{Config, SherlockError, SherlockErrorType, SherlockFlags};
 use super::Loader;
 
 impl Loader {
     pub fn load_config(
         sherlock_flags: &SherlockFlags,
     ) -> Result<(Config, Vec<SherlockError>), SherlockError> {
-        let mut non_breaking: Vec<SherlockError> = Vec::new();
-        let user_config_path = sherlock_flags.config.clone();
+        match fs::read_to_string(&sherlock_flags.config) {
+            Ok(config_str) => Ok((
+                toml::de::from_str(&config_str).map_err(|e| SherlockError {
+                    error: SherlockErrorType::FileParseError(sherlock_flags.config.to_string()),
+                    traceback: e.to_string(),
+                })?,
+                vec![],
+            )),
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    let mut non_breaking = vec![SherlockError {
+                        error: SherlockErrorType::FileExistError(sherlock_flags.config.to_string()),
+                        traceback: Default::default(),
+                    }];
 
-        let user_config: Config = if Path::new(&user_config_path).exists() {
-            let config_str = fs::read_to_string(&user_config_path).map_err(|e| SherlockError {
-                error: SherlockErrorType::FileReadError(user_config_path.clone()),
-                traceback: e.to_string(),
-            })?;
-
-            toml::de::from_str(&config_str).map_err(move |e| SherlockError {
-                error: SherlockErrorType::FileParseError(user_config_path),
-                traceback: e.to_string(),
-            })?
-        } else {
-            non_breaking.push(SherlockError {
-                error: SherlockErrorType::FileExistError(user_config_path),
-                traceback: Default::default(),
-            });
-
-            // Unpack non-breaking errors and default config
-            let (config, n) = Config::default();
-            non_breaking.extend(n);
-            config
-        };
-        Ok((user_config, non_breaking))
+                    // Unpack non-breaking errors and default config
+                    let (config, n) = Config::default();
+                    non_breaking.extend(n);
+                    Ok((config, non_breaking))
+                }
+                _ => Err(SherlockError {
+                    error: SherlockErrorType::FileReadError(sherlock_flags.config.to_string()),
+                    traceback: e.to_string(),
+                })?,
+            },
+        }
     }
 }
