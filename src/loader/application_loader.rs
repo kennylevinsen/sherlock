@@ -1,6 +1,7 @@
 use glob::Pattern;
 use rayon::prelude::*;
 use regex::Regex;
+use simd_json;
 use std::collections::HashMap;
 use std::fs::{self, File};
 
@@ -45,7 +46,7 @@ impl Loader {
 
         // Parse user-specified 'sherlock_alias.json' file
         let aliases: HashMap<String, SherlockAlias> = match File::open(&sherlock_flags.alias) {
-            Ok(f) => serde_json::from_reader(f).map_err(|e| SherlockError {
+            Ok(f) => simd_json::from_reader(f).map_err(|e| SherlockError {
                 error: SherlockErrorType::FileReadError(sherlock_flags.alias.to_string()),
                 traceback: e.to_string(),
             })?,

@@ -11,9 +11,9 @@ use app_launcher::App;
 use bulk_text_launcher::BulkText;
 use calc_launcher::Calc;
 use clipboard_launcher::Clp;
+use simd_json;
 use system_cmd_launcher::SystemCommand;
 use web_launcher::Web;
-
 
 use super::{
     util::{self, SherlockError, SherlockErrorType},
@@ -115,7 +115,7 @@ fn parse_launcher_configs(
         // Tries to load the user-specified launchers. If it failes, it returns a non breaking
         // error.
         match File::open(&sherlock_flags.fallback) {
-            Ok(f) => serde_json::from_reader(f).map_err(|e| SherlockError {
+            Ok(f) => simd_json::from_reader(f).map_err(|e| SherlockError {
                 error: SherlockErrorType::FileParseError(sherlock_flags.fallback.to_string()),
                 traceback: e.to_string(),
             }),
