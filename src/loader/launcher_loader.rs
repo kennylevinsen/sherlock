@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::fs::File;
 
 use crate::actions::util::read_from_clipboard;
 use crate::launcher::{
@@ -110,37 +109,27 @@ fn parse_launcher_configs(
 
     let mut non_breaking: Vec<SherlockError> = Vec::new();
 
-    fn parse_json(json_str: String, file:String) -> Result<Vec<CommandConfig>, SherlockError> {
-        if json_str.is_empty() {
-            return Ok(Vec::new());
-        };
-
-        let config: Vec<CommandConfig> =
-            serde_json::from_str(&json_str.as_str()).map_err(|e| SherlockError {
-                error: SherlockErrorType::FileParseError(file),
-                traceback: e.to_string(),
-            })?;
-        Ok(config)
-    }
-
     fn load_user_fallback(
         sherlock_flags: &SherlockFlags,
     ) -> Result<Vec<CommandConfig>, SherlockError> {
         // Tries to load the user-specified launchers. If it failes, it returns a non breaking
         // error.
-        if Path::new(&sherlock_flags.fallback).exists() {
-            let json_str =
-                fs::read_to_string(&sherlock_flags.fallback).map_err(|e| SherlockError {
-                    error: SherlockErrorType::FileReadError(sherlock_flags.fallback.clone()),
-                    traceback: e.to_string(),
-                })?;
-            let config = parse_json(json_str, sherlock_flags.fallback.clone())?;
-            Ok(config)
-        } else {
-            Err(SherlockError{
-                error: SherlockErrorType::FileExistError(sherlock_flags.fallback.clone()),
-                traceback: format!("The file \"{}\" does not exist in the specified location.", sherlock_flags.fallback)
-            })
+        match File::open(&sherlock_flags.fallback) {
+            Ok(f) => serde_json::from_reader(f).map_err(|e| SherlockError {
+                error: SherlockErrorType::FileParseError(sherlock_flags.fallback.to_string()),
+                traceback: e.to_string(),
+            }),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(SherlockError {
+                error: SherlockErrorType::FileExistError(sherlock_flags.fallback.to_string()),
+                traceback: format!(
+                    "The file \"{}\" does not exist in the specified location.",
+                    sherlock_flags.fallback
+                ),
+            }),
+            Err(e) => Err(SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.fallback.to_string()),
+                traceback: e.to_string(),
+            }),
         }
     }
 
@@ -160,8 +149,10 @@ fn parse_launcher_configs(
                 traceback: e.to_string(),
             })?
             .to_string();
-        let config = parse_json(string_data, "fallback.json".to_string())?;
-        Ok(config)
+        serde_json::from_str(&string_data).map_err(|e| SherlockError {
+            error: SherlockErrorType::FileParseError("fallback.json".to_string()),
+            traceback: e.to_string(),
+        })
     }
 
     let config = match load_user_fallback(sherlock_flags)

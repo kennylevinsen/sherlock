@@ -1,7 +1,8 @@
 use serde::Deserialize;
 use std::env;
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{self, BufRead, BufReader, Read};
+use std::path::Path;
 use std::process::Command;
 
 #[derive(Deserialize, Debug)]
@@ -207,6 +208,14 @@ pub fn read_file(file_path: &str) -> std::io::Result<String> {
     let mut content = String::new();
     reader.read_to_string(&mut content)?;
     Ok(content)
+}
+
+pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
 }
 
 pub fn default_terminal() -> String {

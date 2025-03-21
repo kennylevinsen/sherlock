@@ -2,13 +2,12 @@ use glob::Pattern;
 use rayon::prelude::*;
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs::{self, read_to_string};
-use std::path::Path;
+use std::fs::{self, File};
 
-use super::util::{SherlockError, SherlockFlags, SherlockErrorType};
+use super::util::{SherlockError, SherlockErrorType, SherlockFlags};
 use super::{util, Loader};
 use crate::CONFIG;
-use util::{read_file, AppData, SherlockAlias};
+use util::{read_file, read_lines, AppData, SherlockAlias};
 
 impl Loader {
     pub fn load_applications(
@@ -18,9 +17,6 @@ impl Loader {
             error: SherlockErrorType::ConfigError(None),
             traceback: format!(""),
         })?;
-        // Define required paths for application parsing
-        let sherlock_ignore_path = sherlock_flags.ignore.clone();
-        let sherlock_alias_path = sherlock_flags.alias.clone();
         let system_apps = "/usr/share/applications/";
 
         // Parse needed fields from the '.desktop'
@@ -35,33 +31,30 @@ impl Loader {
         };
 
         // Parse user-specified 'sherlockignore' file
-        let mut ignore_apps: Vec<Pattern> = Default::default();
-        if Path::new(&sherlock_ignore_path).exists() {
-            ignore_apps = read_to_string(&sherlock_ignore_path)
-                .map_err(|e| SherlockError {
-                    error: SherlockErrorType::FileReadError(sherlock_ignore_path),
-                    traceback: e.to_string(),
-                })?
-                .lines()
-                .filter_map(|line| {
-                    let line = line.to_lowercase();
-                    Pattern::new(&line).ok()
-                })
-                .collect::<Vec<Pattern>>();
-        }
+        let ignore_apps: Vec<Pattern> = match read_lines(&sherlock_flags.ignore) {
+            Ok(lines) => lines
+                .map_while(Result::ok)
+                .filter_map(|line| Pattern::new(&line.to_lowercase()).ok())
+                .collect(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Default::default(),
+            Err(e) => Err(SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.ignore.to_string()),
+                traceback: e.to_string(),
+            })?,
+        };
 
         // Parse user-specified 'sherlock_alias.json' file
-        let mut aliases: HashMap<String, SherlockAlias> = Default::default();
-        if Path::new(&sherlock_alias_path).exists() {
-            let json_data = read_to_string(&sherlock_alias_path).map_err(|e| SherlockError {
-                error: SherlockErrorType::FileReadError(sherlock_alias_path.clone()),
+        let aliases: HashMap<String, SherlockAlias> = match File::open(&sherlock_flags.alias) {
+            Ok(f) => serde_json::from_reader(f).map_err(|e| SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.alias.to_string()),
                 traceback: e.to_string(),
-            })?;
-            aliases = serde_json::from_str(&json_data).map_err(|e| SherlockError {
-                error: SherlockErrorType::FileParseError(sherlock_alias_path),
+            })?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Default::default(),
+            Err(e) => Err(SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.alias.to_string()),
                 traceback: e.to_string(),
-            })?
-        }
+            })?,
+        };
 
         // Gather '.desktop' files
         let dektop_files: Vec<_> = fs::read_dir(system_apps)
@@ -151,7 +144,7 @@ fn should_ignore(ignore_apps: &Vec<Pattern>, app: &String) -> bool {
 }
 
 fn get_regex_patterns() -> Result<(Regex, Regex, Regex, Regex, Regex, Regex), SherlockError> {
-    fn construct_pattern(key: &str)->Result<Regex, SherlockError>{
+    fn construct_pattern(key: &str) -> Result<Regex, SherlockError> {
         let pattern = format!(r"(?i){}\s*=\s*(.*)\n", key);
         Regex::new(&pattern).map_err(|e| SherlockError {
             error: SherlockErrorType::RegexError(key.to_string()),
