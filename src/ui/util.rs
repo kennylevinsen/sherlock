@@ -74,7 +74,7 @@ pub fn set_home_screen(
 
     let widgets = construct_tiles(&keyword.to_string(), &show, &mode.to_string());
     for widget in widgets {
-        widget.add_css_class("animate");
+        // widget.add_css_class("animate");
         results_frame.append(&widget);
     }
 }
