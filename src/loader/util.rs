@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read};
@@ -25,7 +25,7 @@ pub struct CommandConfig {
     pub args: serde_json::Value,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AppData {
     pub icon: String,
     pub exec: String,
@@ -34,7 +34,7 @@ pub struct AppData {
     pub tag_end: Option<String>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SherlockFlags {
     pub config: String,
     pub fallback: String,
@@ -43,6 +43,7 @@ pub struct SherlockFlags {
     pub alias: String,
     pub display_raw: bool,
     pub center_raw: bool,
+    pub cache: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]

@@ -11,7 +11,7 @@ use crate::CONFIG;
 use util::{read_file, read_lines, AppData, SherlockAlias};
 
 impl Loader {
-    pub fn load_applications(
+    fn load_applications_from_disk(
         sherlock_flags: &SherlockFlags,
     ) -> Result<HashMap<String, AppData>, SherlockError> {
         let config = CONFIG.get().ok_or(SherlockError {
@@ -135,6 +135,47 @@ impl Loader {
                 ))
             })
             .collect();
+
+        Ok(apps)
+    }
+
+    fn write_cache(apps: &HashMap<String, AppData>, flags: &SherlockFlags) {
+        let tmp_path = flags.cache.to_string() + ".tmp";
+        if let Ok(f) = File::create(&tmp_path) {
+            if let Ok(_) = simd_json::to_writer(f, &apps) {
+                let _ = fs::rename(&tmp_path, &flags.cache);
+            } else {
+                let _ = fs::remove_file(&tmp_path);
+            }
+        }
+    }
+
+    pub fn load_applications(
+        sherlock_flags: &SherlockFlags,
+    ) -> Result<HashMap<String, AppData>, SherlockError> {
+        let cached_apps: Option<HashMap<String, AppData>> = File::open(&sherlock_flags.cache)
+            .ok()
+            .and_then(|f| simd_json::from_reader(f).ok());
+
+        let flags = sherlock_flags.clone();
+        if let Some(apps) = cached_apps {
+            // Refresh cache in the background
+            let old_apps = apps.clone();
+            std::thread::spawn(move || {
+                if let Ok(new_apps) = Loader::load_applications_from_disk(&flags) {
+                    if old_apps != new_apps {
+                        Loader::write_cache(&new_apps, &flags);
+                    }
+                }
+            });
+            return Ok(apps);
+        }
+
+        let apps = Loader::load_applications_from_disk(sherlock_flags)?;
+
+        // Write the cache in the background
+        let app_clone = apps.clone();
+        std::thread::spawn(move || Loader::write_cache(&app_clone, &flags));
         Ok(apps)
     }
 }

@@ -1,7 +1,7 @@
 use std::env;
 
 use super::{
-    util::{SherlockError, SherlockFlags, SherlockErrorType},
+    util::{SherlockError, SherlockErrorType, SherlockFlags},
     Loader,
 };
 
@@ -49,6 +49,7 @@ impl SherlockFlags {
             alias: extract_flag_value("--alias", defaults.alias),
             display_raw: check_flag_existance("--display-raw"),
             center_raw: check_flag_existance("--center"),
+            cache: extract_flag_value("--cache", defaults.cache),
         })
     }
 
@@ -65,6 +66,7 @@ impl SherlockFlags {
             alias: format!("{}/.config/sherlock/sherlock_alias.json", home_dir),
             display_raw: false,
             center_raw: false,
+            cache: format!("{}/.cache/sherlock_desktop_cache.json", home_dir),
         })
     }
 }
@@ -85,7 +87,8 @@ pub fn print_help() -> Result<(), SherlockError> {
         ("--style", "Set the style configuration file."),
         ("--ignore", "Specify the sherlock ignore file"),
         ("--alias", "Specify the sherlock alias file (.json)."),
-        ("--display-raw", "Force Sherlock to use a singular tile to display the piped content")
+        ("--display-raw", "Force Sherlock to use a singular tile to display the piped content"),
+        ("--cache", "Specify the sherlock cache file (.json).")
     ];
 
     // Print header
