@@ -74,7 +74,8 @@ impl Loader {
                         } else {
                             LauncherType::Clipboard(Clp { clipboard_content })
                         }
-                    }
+                    },
+                    "splash" => LauncherType::Splash,
                     _ => LauncherType::Empty,
                 };
                 let method: String = if let Some(value) = &cmd.on_return {

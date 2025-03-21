@@ -54,7 +54,6 @@ static CONFIG: OnceLock<Config> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
-
     let mut startup_errors: Vec<SherlockError> = Vec::new();
     let mut non_breaking: Vec<SherlockError> = Vec::new();
 
@@ -153,7 +152,6 @@ async fn main() {
             }
         };
     
-
         // Logic for the Error-View
         if !app_config.debug.try_surpress_errors {
             let show_errors = !error_list.is_empty();
@@ -166,7 +164,7 @@ async fn main() {
     
         // Show window
         APP_STATE.with(|state|{
-            if let Some(ref state) = *state.borrow(){
+            if let Some(ref state) = *state.borrow() {
                 state.window.as_ref().map(|window| window.present());
             }
         });

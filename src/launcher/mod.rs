@@ -24,6 +24,7 @@ pub enum LauncherType {
     BulkText(BulkText),
     SystemCommand(SystemCommand),
     Clipboard(Clp),
+    Splash,
     Empty,
 }
 
@@ -68,8 +69,8 @@ impl Launcher {
                 ),
                 LauncherType::Clipboard(clp) => {
                     Tile::clipboard_tile(self, index, &clp.clipboard_content, keyword)
-                }
-
+                },
+                LauncherType::Splash => Tile::splash_tile(self, index, keyword),
                 _ => (index, Vec::new()),
             }
         } else {

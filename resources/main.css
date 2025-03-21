@@ -70,34 +70,26 @@ window {
 #time-bar {
     outline: none;
     /* border: 1px solid hsla(var(--border), 1); */
-    background: hsla(var(--background), 1);
     min-height: 40px;
     color: hsl(var(--text));
-    font-size: 48px;
+    font-size: 96px;
     padding-left: 10px;
 }
 
 #date-top {
     outline: none;
-    background: hsla(var(--background), 1);
     color: hsl(var(--text));
     min-height: 0;
-    font-size: 14px;
-    padding-left: 10px;
-    padding-top: 10px;
+    font-size: 28px;
+    padding-top: 16px;
+    padding-right: 20px;
 }
 
 #date-bottom {
     outline: none;
-    background: hsla(var(--background), 1);
     color: hsl(var(--text));
-    font-size: 20px;
-    padding-left: 10px;
-}
-
-#datetime-bar-holder {
-    padding: 10px 10px 0px 10px;
-    min-height: 40px;
+    font-size: 44px;
+    padding-right: 20px;
 }
 
 /* SEARCH PAGE */
