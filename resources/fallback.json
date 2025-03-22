@@ -25,19 +25,10 @@
         "alias": "",
         "type": "command",
         "args": {"commands": {
-            "ChatGPT": {"icon": "chat-gpt", "exec": "xdg-open https://chatgpt.com &", "search_string": "chatgpt;ai;"}
+            "ChatGPT": {"icon": "chat-gpt", "exec": "xdg-open https://chatgpt.com &", "search_string": "chatgpt;ai;"},
+            "Github": {"icon": "sherlock-github", "exec": "xdg-open https://github.com/skxxtz &", "search_string": "github;"}
         }},
         "priority": 3
-    },
-    {
-        "name": "Network Management",
-        "alias": "nm",
-        "type": "command",
-        "args": {"commands": {
-            "Waves": {"icon": "network-connect", "exec": "nmcli d wifi c SSID &", "search_string": "wifi"},
-            "Waves-AP": {"icon": "network-connect", "exec": "nmcli d wifi c SSID &", "search_string": "wifi"}
-        }},
-        "priority": 4
     },
     {
         "name": "Power Management",
@@ -75,8 +66,8 @@
 
     {
         "name": "Web Search",
-        "display_name": "Google Search {keyword}",
-        "on_return": "copy",
+        "display_name": "Google Search",
+        "tag_start": "{keyword}",
         "alias": "gg",
         "type": "web_launcher",
         "args": {"search_engine": "google", "icon": "google"},
@@ -84,19 +75,12 @@
     },
     {
         "name": "YouTube Search",
+        "display_name": "Youtube Search",
+        "tag_start": "{keyword}",
         "alias": "yt",
         "type": "web_launcher",
         "args": {"search_engine": "https://www.youtube.com/results?search_query={keyword}", "icon": "sherlock-youtube"},
-        "priority": 100
-    },
-    {
-        "name": "Wikipedia Search",
-        "alias": "wiki",
-        "type": "bulk_text",
-        "on_return": "copy",
-        "async": true, 
-        "args": {"icon": "wikipedia", "exec": "/home/basti/.config/sherlock/scripts/wiki-api", "exec-args": "'{keyword}'"},
-        "priority": 0 
+        "priority": 0
     }
 ]
 

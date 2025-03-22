@@ -1,4 +1,4 @@
-use gtk4::{Label, ListBoxRow};
+use gtk4::{Label, ListBoxRow, Box};
 
 pub mod app_launcher;
 pub mod bulk_text_launcher;
@@ -31,7 +31,10 @@ pub enum LauncherType {
 pub struct Launcher {
     pub name: String,
     pub alias: Option<String>,
+    pub tag_start: Option<String>,
+    pub tag_end: Option<String>,
     pub method: String,
+    pub next_content: Option<String>,
     pub priority: u32,
     pub r#async: bool,
     pub home: bool,
@@ -43,30 +46,28 @@ impl Launcher {
         if let Some(app_config) = CONFIG.get() {
             match &self.launcher_type {
                 LauncherType::App(app) => Tile::app_tile(
+                    self,
                     index,
-                    app.apps.clone(),
-                    &self.name,
-                    &self.method,
                     keyword,
+                    app.apps.clone(),
                     app_config,
                 ),
                 LauncherType::Web(web) => {
-                    Tile::web_tile(&self.name, &self.method, &web, index, keyword)
+                    Tile::web_tile(self, index, keyword, &web)
                 }
-                LauncherType::Calc(_) => Tile::calc_tile(index, keyword),
+                LauncherType::Calc(_) => Tile::calc_tile(self, index, keyword, None),
                 LauncherType::BulkText(bulk_text) => {
                     Tile::bulk_text_tile(&self.name, &self.method, &bulk_text.icon, index, keyword)
                 }
                 LauncherType::SystemCommand(cmd) => Tile::app_tile(
+                    self,
                     index,
-                    cmd.commands.clone(),
-                    &self.name,
-                    &self.method,
                     keyword,
+                    cmd.commands.clone(),
                     app_config,
                 ),
                 LauncherType::Clipboard(clp) => {
-                    Tile::clipboard_tile(index, &clp.clipboard_content, keyword)
+                    Tile::clipboard_tile(self, index, &clp.clipboard_content, keyword)
                 }
 
                 _ => (index, Vec::new()),
@@ -75,7 +76,7 @@ impl Launcher {
             (index, Vec::new())
         }
     }
-    pub fn get_loader_widget(&self, keyword: &String) -> Option<(ListBoxRow, Label, Label)> {
+    pub fn get_loader_widget(&self, keyword: &String) -> Option<(ListBoxRow, Label, Label, Box)> {
         match &self.launcher_type {
             LauncherType::BulkText(bulk_text) => {
                 Tile::bulk_text_tile_loader(&self.name, &self.method, &bulk_text.icon, keyword)
@@ -83,7 +84,7 @@ impl Launcher {
             _ => None,
         }
     }
-    pub async fn get_result(&self, keyword: &String) -> Option<(String, String)> {
+    pub async fn get_result(&self, keyword: &String) -> Option<(String, String, Option<String>)> {
         match &self.launcher_type {
             LauncherType::BulkText(bulk_text) => bulk_text.get_result(keyword).await,
             _ => None,

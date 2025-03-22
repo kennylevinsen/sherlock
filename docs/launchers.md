@@ -8,14 +8,16 @@ The launcher can be of the following types:<br>
 
 - **[App Launcher](#app-launcher):** Launches your apps. 
 - **[Web Launcher](#web-launcher):** Opens the ``{keyword}`` in your default webbrowser. The used search engine is configureable and the most common search engines are included. 
-- **[Calculator](#calculator):** Converts your input into a math equation and displays its result. On Enter, it also copies the result into the clipboard.
+- **[Calculator](#calculator):** Converts your input into a math equation and displays its result. On Return, it also copies the result into the clipboard.
+- **[Clipboard Launcher](#clipboard-launcher):** Checks if your clipboard currently holds a URL. On Return, it opens the url in the default webbrowser.
 - **[Command](#command-launcher):** This field can execute commands that do not rely on the ``{keyword}`` attribute (such as connecting to a specific wifi).
 - **[Bulk Text](#bulk-text):** The Bulk Text is a way to launch a custom script/application in an async form and to display its result in a widget.
 
 
 
 ## Common Launcher Attributes
-
+`[UI]` - used for UI <br>
+`[FC]` - used to specify behaviour <br>
 | Attribute   | Type | Description |
 |-------------|------|-------------|
 | `name`      | `[UI]` (required) | The name of the category the tiles belong to. This name will appear under the app’s name. It is required but can be left empty. |
@@ -25,6 +27,7 @@ The launcher can be of the following types:<br>
 | `args`      | `[FC]` (required) | Arguments specific to the `type`. Can be left empty. |
 | `priority`  | `[FC]` (required) | Defines the display order of launcher elements at startup. A value of 0 means the launcher will only be shown if the `alias` is active. |
 | `async`     | `[FC]` (optional) | Indicates whether the launcher should run asynchronously. This is used in `Bulk Text`. |
+| `on_return`     | `[FC]` (optional) | Specifies what to do if return is pressed on the tile. |
 
 ---
 
@@ -44,6 +47,9 @@ The launcher can be of the following types:<br>
 ```json
 {
     "name": "Web Search",
+    "display_name": "Google Search"
+    "tag_start": "{keyword}",
+    "tag_end": "{keyword}",
     "alias": "gg",
     "type": "web_launcher",
     "args": {
@@ -86,7 +92,17 @@ Sets the icon-name the launcher should show. For a guide on how to add your own 
 ```
 
 ---
-
+## Clipboard Launcher
+```json
+    {
+        "name": "Clipboard",
+        "type": "clipboard-execution",
+        "args": {},
+        "priority": 1,
+        "home": true
+    }
+```
+---
 ## Command Launcher
 ```json
 {
@@ -99,11 +115,15 @@ Sets the icon-name the launcher should show. For a guide on how to add your own 
                 "icon": "icon-name",
                 "exec": "command to execute", 
                 "search_string": "examplecommand"
+                "tag_start": "{keyword}"
+                "tag_end": "{keyword}"
             },
             "command2": {
                 "icon": "icon-name",
                 "exec": "command to execute", 
                 "search_string": "examplecommand"
+                "tag_start": "{keyword}"
+                "tag_end": "{keyword}"
             }
         }
     },
@@ -117,6 +137,8 @@ Has following fields of its own:
 2. `icon` / the icon-name for the icon to display 
 3. `exec` / the command to execute
 4. `search_string` / the string to match to on search
+5. `tag_start` / specifies what will be displayed in the start tag
+6. `tag_end` / specifies what will be displayed in the end tag
 
 ---
 
@@ -127,6 +149,7 @@ Has following fields of its own:
     "alias": "wiki",
     "type": "bulk_text",
     "async": true,
+    "on_return": "copy",
     "args": {
         "icon": "wikipedia",
         "exec": "wiki-api"

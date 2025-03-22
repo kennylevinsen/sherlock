@@ -1,27 +1,21 @@
-use nix::fcntl::{fcntl, FcntlArg, OFlag};
+use std::fs::File;
+use std::os::linux::fs::MetadataExt;
 use std::io::{self, Read};
-use std::os::unix::io::AsRawFd;
 
 use super::Loader;
 
 impl Loader {
     pub fn load_pipe_args() -> String {
-        let mut stdin = io::stdin();
-        let mut buffer = String::new();
-
-        let fd = stdin.lock().as_raw_fd();
-
-        match fcntl(fd, FcntlArg::F_GETFL) {
-            Ok(flags) => {
-                let flags = OFlag::from_bits_truncate(flags);
-                if let Ok(_) = fcntl(fd, FcntlArg::F_SETFL(OFlag::O_NONBLOCK | flags)) {
-                    let _ = stdin.read_to_string(&mut buffer);
-
-                    return buffer;
-                }
+        if let Ok(metadata) = File::open("/dev/stdin").and_then(|f| f.metadata()){
+            // 0o020000 - Character device (e.g. TTY)
+            // 0o170000 - octal mask to extract all file types
+            if metadata.st_mode() & 0o170000 == 0o020000 {
+                return String::new();
             }
-            Err(_) => {}
         }
-        String::new()
+        let stdin = io::stdin();
+        let mut buf = String::new();
+        let _ = stdin.lock().read_to_string(&mut buf);
+        return buf
     }
 }

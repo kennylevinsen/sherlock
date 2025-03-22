@@ -1,0 +1,20 @@
+
+<interface>
+    <object class="GtkBox" id="next_tile">
+        <style>
+            <class name="next_tile"/>
+        </style>
+        <property name="orientation">vertical</property>
+        <property name="spacing">0</property>
+        <property name="hexpand">true</property> 
+        <property name="vexpand">true</property> 
+
+        <child>
+            <object class="GtkTextView" id="content">
+                <property name="name">content-body</property>
+            </object>
+        </child>
+
+
+    </object>
+</interface>

@@ -1,11 +1,26 @@
 use gtk4::gdk::Rectangle;
-use gtk4::{prelude::*, Label, ListBox, ListBoxRow, ScrolledWindow, Widget};
+use gtk4::{prelude::*, Label, ListBox, ListBoxRow, ScrolledWindow, StackTransitionType, Widget};
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use crate::actions::execute_from_attrs;
 use crate::launcher::{construct_tiles, Launcher};
+use crate::APP_STATE;
+
+
+pub fn show_stack_page<T:AsRef<str>>(page_name:T, transition:Option<StackTransitionType>){
+    APP_STATE.with(|state|{
+        if let Some(ref state) = *state.borrow(){
+            state.stack.as_ref().map(|stack|{
+                if let Some(transition) = transition {
+                    stack.set_transition_type(transition);
+                };
+                stack.set_visible_child_name(page_name.as_ref());
+            });
+        }
+    });
+}
 
 pub fn execute_by_index(results: &ListBox, index: i32) {
     if let Some(row) = results.row_at_index(index - 1) {
@@ -56,8 +71,10 @@ pub fn set_home_screen(
     while let Some(row) = results_frame.last_child() {
         results_frame.remove(&row);
     }
+
     let widgets = construct_tiles(&keyword.to_string(), &show, &mode.to_string());
     for widget in widgets {
+        widget.add_css_class("animate");
         results_frame.append(&widget);
     }
 }

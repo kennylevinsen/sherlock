@@ -3,7 +3,7 @@ use gtk4::{
     self,
     gdk::{self, Key},
     prelude::*,
-    ApplicationWindow, Builder, EventControllerKey, Stack,
+    Builder, EventControllerKey,
 };
 use gtk4::{Box as HVBox, Entry, Label, ListBox, ScrolledWindow};
 use std::cell::RefCell;
@@ -14,35 +14,43 @@ use super::tiles::util::AsyncLauncherTile;
 use super::util::*;
 use crate::actions::execute_from_attrs;
 use crate::launcher::{construct_tiles, Launcher};
+use crate::{APP_STATE, CONFIG};
+
+struct SearchUI{
+    result_viewport: ScrolledWindow,
+    preview_box: HVBox,
+    search_bar: Entry,
+    mode_title: Label,
+}
 
 pub fn search(
-    window: ApplicationWindow,
-    search_stack: &Stack,
     launchers: Vec<Launcher>,
-) -> ApplicationWindow {
+) {
     // Initiallize the view to show all apps
-    let (mode, modes, vbox, search_bar, result_viewport, mode_title, results) =
+    let (mode, modes, vbox, ui, results) =
         construct_window(&launchers);
-    result_viewport.set_policy(gtk4::PolicyType::Automatic, gtk4::PolicyType::Automatic);
+    ui.result_viewport.set_policy(gtk4::PolicyType::Automatic, gtk4::PolicyType::Automatic);
     set_home_screen("", "all", &*results, &launchers);
     results.focus_first();
-    search_bar.grab_focus();
+    ui.search_bar.grab_focus();
 
-    change_event(&search_bar, modes, &mode_title, &mode, &launchers, &results);
+    change_event(&ui, modes, &mode, &launchers, &results);
 
     nav_event(
-        &window,
         results,
-        result_viewport,
-        search_bar,
-        mode_title,
+        ui,
         mode,
         launchers,
     );
+    APP_STATE.with(|state|{
+        if let Some(ref state) = *state.borrow(){
+            state.add_stack_page(vbox, "search-page");
+        }
+    });
 
-    search_stack.add_named(&vbox, Some("search-page"));
-    return window;
 }
+
+
 
 fn construct_window(
     launchers: &Vec<Launcher>,
@@ -50,9 +58,7 @@ fn construct_window(
     Rc<RefCell<String>>,
     HashMap<String, String>,
     HVBox,
-    Entry,
-    ScrolledWindow,
-    Label,
+    SearchUI,
     Rc<ListBox>,
 ) {
     // Collect Modes
@@ -70,28 +76,29 @@ fn construct_window(
 
     // Get the requred object references
     let vbox: HVBox = builder.object("vbox").unwrap();
-    let search_bar: Entry = builder.object("search-bar").unwrap();
-    let result_viewport: ScrolledWindow = builder.object("scrolled-window").unwrap();
-    let mode_title: Label = builder.object("category-type-label").unwrap();
     let results: Rc<ListBox> = Rc::new(builder.object("result-frame").unwrap());
+    let ui = SearchUI{
+        result_viewport: builder.object("scrolled-window").unwrap_or_default(),
+        preview_box:  builder.object("preview_box").unwrap_or_default(),
+        search_bar:  builder.object("search-bar").unwrap_or_default(),
+        mode_title:  builder.object("category-type-label").unwrap_or_default(),
+    };
+    if let Some(c) = CONFIG.get(){
+        ui.result_viewport.set_size_request((c.appearance.width as f32 * 0.4) as i32, -1);
+    }
 
     (
         mode,
         modes,
         vbox,
-        search_bar,
-        result_viewport,
-        mode_title,
+        ui,
         results,
     )
 }
 
 fn nav_event(
-    window: &ApplicationWindow,
     results_ev_nav: Rc<ListBox>,
-    result_viewport: ScrolledWindow,
-    search_bar: Entry,
-    mode_title_ev_nav: Label,
+    ui: SearchUI,
     mode_ev_nav: Rc<RefCell<String>>,
     launchers_ev_nav: Vec<Launcher>,
 ) {
@@ -100,19 +107,19 @@ fn nav_event(
     event_controller.connect_key_pressed(move |_, key, _, modifiers| {
         match key {
             gdk::Key::Up => {
-                results_ev_nav.focus_prev(&result_viewport);
+                results_ev_nav.focus_prev(&ui.result_viewport);
             }
             gdk::Key::Down => {
-                results_ev_nav.focus_next(&result_viewport);
+                results_ev_nav.focus_next(&ui.result_viewport);
                 return true.into();
             }
             gdk::Key::BackSpace => {
-                let ctext = &search_bar.text();
+                let ctext = &ui.search_bar.text();
                 if modifiers.contains(gdk::ModifierType::CONTROL_MASK) {
-                    let _ = &search_bar.set_text("");
+                    let _ = &ui.search_bar.set_text("");
                 } else {
                     if ctext.is_empty() {
-                        set_mode(&mode_title_ev_nav, &mode_ev_nav, "all", &"All".to_string());
+                        set_mode(&ui.mode_title, &mode_ev_nav, "all", &"All".to_string());
                         set_results(
                             &ctext,
                             &mode_ev_nav.borrow(),
@@ -146,19 +153,22 @@ fn nav_event(
         }
         false.into()
     });
-    window.add_controller(event_controller);
+    APP_STATE.with(|state|{
+        if let Some(ref state) = *state.borrow(){
+            state.add_event_listener(event_controller);
+        }
+    });
 }
 
 fn change_event(
-    search_bar: &Entry,
+    ui: &SearchUI,
     modes: HashMap<String, String>,
-    mode_title: &Label,
     mode: &Rc<RefCell<String>>,
     launchers: &Vec<Launcher>,
     results: &Rc<ListBox>,
 ) {
     //Cloning:
-    let mode_title_ev_changed = mode_title.clone();
+    let mode_title_ev_changed = ui.mode_title.clone();
     let launchers_ev_changed = launchers.clone();
     let mode_ev_changed = Rc::clone(mode);
     let results_ev_changed = Rc::clone(results);
@@ -166,7 +176,7 @@ fn change_event(
     let current_task: Rc<RefCell<Option<glib::JoinHandle<()>>>> = Rc::new(RefCell::new(None));
     let cancel_flag = Rc::new(RefCell::new(false));
 
-    search_bar.connect_changed(move |search_bar| {
+    ui.search_bar.connect_changed(move |search_bar| {
         let current_text = search_bar.text().to_string();
         if let Some(task) = current_task.borrow_mut().take() {
             task.abort();
@@ -182,6 +192,13 @@ fn change_event(
                     mode_name,
                 );
                 search_bar.set_text("");
+
+                set_results(
+                    "",
+                    &mode_ev_changed.borrow(),
+                    &*results_ev_changed,
+                    &launchers_ev_changed,
+                );
             }
         } else {
             *cancel_flag.borrow_mut() = false;
@@ -208,11 +225,12 @@ fn change_event(
                     if current_mode == launcher.alias.as_deref().unwrap_or("") {
                         launcher
                             .get_loader_widget(&current_text)
-                            .map(|(widget, title, body)| AsyncLauncherTile {
+                            .map(|(widget, title, body, attrs)| AsyncLauncherTile {
                                 launcher: launcher.clone(),
                                 widget,
                                 title,
                                 body,
+                                attrs,
                             })
                     } else {
                         None
@@ -231,9 +249,13 @@ fn change_event(
                     return;
                 }
                 for widget in widgets.iter() {
-                    if let Some((title, body)) = widget.launcher.get_result(&current_text).await {
+                    if let Some((title, body, next_content)) = widget.launcher.get_result(&current_text).await {
                         widget.title.set_text(&title);
                         widget.body.set_text(&body);
+                        if let Some(next_content) = next_content {
+                            let label = Label::new(Some(format!("next_content | {}", next_content).as_str()));
+                            widget.attrs.append(&label);
+                        }
                     }
                 }
             });
@@ -251,4 +273,5 @@ pub fn set_results(keyword: &str, mode: &str, results_frame: &ListBox, launchers
     for widget in widgets {
         results_frame.append(&widget);
     }
+    results_frame.focus_first();
 }

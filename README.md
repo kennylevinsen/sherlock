@@ -153,7 +153,4 @@ Make sure you have the folloing dependencies installed:
 
     (Make sure to replace the filename if the version number is different.)
 
-After installation, you can enjoy using Sherlock Launcher, which will handle dependencies and installation automatically!
-
-
 

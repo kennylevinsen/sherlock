@@ -14,7 +14,7 @@
                             <object class="GtkBox">
                                 <property name="valign">center</property>
                                 <child>
-                                    <object class="GtkLabel" id="title">
+                                    <object class="GtkLabel" id="app-name">
                                         <property name="name">title</property>
                                         <property name="xalign">0</property>
                                     </object>

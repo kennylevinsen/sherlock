@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::fs::File;
 
 use crate::actions::util::read_from_clipboard;
 use crate::launcher::{
@@ -15,8 +14,9 @@ use clipboard_launcher::Clp;
 use system_cmd_launcher::SystemCommand;
 use web_launcher::Web;
 
+
 use super::{
-    util::{self, SherlockError},
+    util::{self, SherlockError, SherlockErrorType},
     Loader,
 };
 use util::{AppData, CommandConfig, SherlockFlags};
@@ -85,7 +85,10 @@ impl Loader {
                 Some(Launcher {
                     name: cmd.name.to_string(),
                     alias: cmd.alias.clone(),
+                    tag_start: cmd.tag_start.clone(),
+                    tag_end: cmd.tag_end.clone(),
                     method,
+                    next_content: cmd.next_content.clone(),
                     priority: cmd.priority,
                     r#async: cmd.r#async,
                     home: cmd.home,
@@ -106,43 +109,27 @@ fn parse_launcher_configs(
 
     let mut non_breaking: Vec<SherlockError> = Vec::new();
 
-    fn parse_json(json_str: String) -> Result<Vec<CommandConfig>, SherlockError> {
-        if json_str.is_empty() {
-            return Ok(Vec::new());
-        };
-
-        let config: Vec<CommandConfig> =
-            serde_json::from_str(&json_str.as_str()).map_err(|e| SherlockError {
-                name: format!("File Parse Error"),
-                message: format!("Failed to parse fallback file as valid json."),
-                traceback: e.to_string(),
-            })?;
-        Ok(config)
-    }
-
     fn load_user_fallback(
         sherlock_flags: &SherlockFlags,
     ) -> Result<Vec<CommandConfig>, SherlockError> {
         // Tries to load the user-specified launchers. If it failes, it returns a non breaking
         // error.
-        if Path::new(&sherlock_flags.fallback).exists() {
-            let json_str =
-                fs::read_to_string(&sherlock_flags.fallback).map_err(|e| SherlockError {
-                    name: format!("File Read Error"),
-                    message: format!(
-                        "Failed to load provided fallback file: {}",
-                        sherlock_flags.fallback
-                    ),
-                    traceback: e.to_string(),
-                })?;
-            let config = parse_json(json_str)?;
-            Ok(config)
-        } else {
-            Err(SherlockError{
-                name: "Config not Provided".to_string(),
-                message: format!("No launchers were provided. Continuing with default launchers."),
-                traceback: format!("Try adding a 'fallback.json' file into '~/.config/sherlock/'. Or specify a custom one using the --falback flag.")
-            })
+        match File::open(&sherlock_flags.fallback) {
+            Ok(f) => serde_json::from_reader(f).map_err(|e| SherlockError {
+                error: SherlockErrorType::FileParseError(sherlock_flags.fallback.to_string()),
+                traceback: e.to_string(),
+            }),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Err(SherlockError {
+                error: SherlockErrorType::FileExistError(sherlock_flags.fallback.to_string()),
+                traceback: format!(
+                    "The file \"{}\" does not exist in the specified location.",
+                    sherlock_flags.fallback
+                ),
+            }),
+            Err(e) => Err(SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.fallback.to_string()),
+                traceback: e.to_string(),
+            }),
         }
     }
 
@@ -153,19 +140,19 @@ fn parse_launcher_configs(
             gio::ResourceLookupFlags::NONE,
         )
         .map_err(|e| SherlockError {
-            name: format!("Resource Lookup Error"),
-            message: format!("Failed to load 'fallback.json' from resource."),
+            error: SherlockErrorType::ResourceLookupError("fallback.json".to_string()),
             traceback: e.to_string(),
         })?;
         let string_data = std::str::from_utf8(&data)
             .map_err(|e| SherlockError {
-                name: format!("File Parsing Error"),
-                message: format!("Failed to parse 'fallback.json' as a valid UTF-8 string."),
+                error: SherlockErrorType::FileParseError("fallback.json".to_string()),
                 traceback: e.to_string(),
             })?
             .to_string();
-        let config = parse_json(string_data)?;
-        Ok(config)
+        serde_json::from_str(&string_data).map_err(|e| SherlockError {
+            error: SherlockErrorType::FileParseError("fallback.json".to_string()),
+            traceback: e.to_string(),
+        })
     }
 
     let config = match load_user_fallback(sherlock_flags)

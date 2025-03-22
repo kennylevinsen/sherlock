@@ -1,3 +1,5 @@
+use serde_json;
+use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use tokio::io::{AsyncReadExt, BufReader};
 use tokio::process::Command;
@@ -10,8 +12,24 @@ pub struct BulkText {
     pub args: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct AsyncCommandResponse{
+    title: Option<String>,
+    content: Option<String>,
+    next_content: Option<String>,
+}
+impl AsyncCommandResponse {
+    fn new()->Self{
+        AsyncCommandResponse {
+            title: None,
+            content: None,
+            next_content: None,
+        }
+    }
+}
+
 impl BulkText {
-    pub async fn get_result(&self, keyword: &String) -> Option<(String, String)> {
+    pub async fn get_result(&self, keyword: &String) -> Option<(String, String, Option<String>)> {
         let a = self.args.replace("{keyword}", &keyword);
         let args = a.split(" ");
         let mut cmd = Command::new(&self.exec);
@@ -25,8 +43,9 @@ impl BulkText {
             Ok(child) => child,
             Err(e) => {
                 return Some((
-                    "Failed to execute script.".to_string(),
-                    format!("Error: {}", e),
+                        "Failed to execute script.".to_string(),
+                        format!("Error: {}", e),
+                        None
                 ));
             }
         };
@@ -53,41 +72,38 @@ impl BulkText {
         match result {
             Ok((Ok(status), stdout, _stderr)) => {
                 if status.success() {
-                    let mut string_output =
-                        String::from_utf8_lossy(stdout.as_bytes()).replace("#SHERLOCK_TITLE:", "");
-                    string_output = string_output.replace("\\n", "\n");
-                    string_output = string_output.replace('"', "");
+                    let output = String::from_utf8_lossy(stdout.as_bytes());
+                    let response: AsyncCommandResponse = serde_json::from_str(&output).unwrap_or(AsyncCommandResponse::new());
 
-                    let mut parts = string_output.split("#SHERLOCK_BODY:");
-                    let mut title = parts.next().unwrap_or(keyword).trim();
-                    let body = parts.next().unwrap_or("").trim();
+                    let title = response.title.unwrap_or(keyword.to_string());
+                    let content = response.content.unwrap_or_default();
+                    Some((title, content, response.next_content))
 
-                    if title.is_empty() {
-                        title = keyword;
-                    }
-
-                    Some((title.to_string(), body.to_string()))
                 } else {
                     Some((
-                        "Script executed but returned an error.".to_string(),
-                        format!("Status: {:?}", status),
+                            "Script executed but returned an error.".to_string(),
+                            format!("Status: {:?}", status),
+                            None
                     ))
                 }
             }
             Ok((Err(_), _, _)) => {
                 let _ = child.kill().await; // Kill the process if it fails
                 Some((
-                    "Failed to execute script.".to_string(),
-                    "Error occurred while running the process.".to_string(),
+                        "Failed to execute script.".to_string(),
+                        "Error occurred while running the process.".to_string(),
+                        None
                 ))
             }
             Err(_) => {
                 let _ = child.kill().await; // Kill the process on timeout
                 Some((
-                    "Failed to execute script.".to_string(),
-                    "Timeout exceeded.".to_string(),
+                        "Failed to execute script.".to_string(),
+                        "Timeout exceeded.".to_string(),
+                        None
                 ))
             }
         }
     }
+
 }

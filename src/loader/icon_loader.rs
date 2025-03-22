@@ -1,4 +1,4 @@
-use super::util::SherlockError;
+use super::util::{SherlockError, SherlockErrorType};
 use super::Loader;
 use crate::CONFIG;
 use gtk4::{gdk::Display, IconTheme};
@@ -13,8 +13,7 @@ impl Loader {
             let home_dir = env::var("HOME")
                 .map_err(|e| {
                     non_breaking.push(SherlockError {
-                        name: format!("Env Var not Found Error"),
-                        message: format!("Failed to unpack home directory for user."),
+                        error: super::util::SherlockErrorType::EnvVarNotFoundError("HOME".to_string()),
                         traceback: e.to_string(),
                     });
                 })
@@ -28,8 +27,7 @@ impl Loader {
             }
         } else {
             non_breaking.push(SherlockError {
-                name: format!("Configuration has error."),
-                message: format!("It should never come to this."),
+                error: SherlockErrorType::ConfigError(None),
                 traceback: format!(""),
             });
         }

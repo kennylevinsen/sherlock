@@ -24,9 +24,12 @@ The configuration file for Sherlock is located at `~/.config/sherlock/config.tom
 
 | **Keyword**     | **Default** | **Explanation**                                                                                                                 |
 |-----------------|-------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `width`    | `900`        | Sets the width of the main window.|
+| `height`    | `593`        | Sets the height of the main window. | 
 | `gsk_renderer`  | `"cairo"`   | Specifies the renderer used to display the Sherlock application. During testing, `cairo` showed the fastest startup times. You can also use `ngl`, `gl`, or `vulkan` based on your system's performance. |
 | `recolor_icons` | `false`     | Appends the `-symbolic` postfix to all icons, allowing them to be colorized. Note: not all icons have a symbolic version.       |
 | `icon_paths`    | `[]`        | Defines custom paths for the application to search for icons. This is useful for adding custom icons for commands or aliases through the `sherlockalias` file. |
+| `icon_size`    | `22`        | Sets the default icon size for the icons in each tile. |
 
 ---
 

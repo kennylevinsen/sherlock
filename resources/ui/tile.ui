@@ -24,6 +24,7 @@
             <child>
                 <object class="GtkBox" id="app-icon-holder">
                     <property name="valign">center</property>
+                    <property name="name">icon-holder</property>
                     <child>
                         <object class="GtkImage" id="icon-name">
                             <property name="name">icon</property>

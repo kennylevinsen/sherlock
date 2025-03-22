@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use crate::loader::util::SherlockError;
+use crate::loader::util::{SherlockError, SherlockErrorType};
 
 pub fn command_launch(exec: &str, keyword: &str) -> Result<(), SherlockError> {
     let exec = exec.replace("{keyword}", &keyword);
@@ -13,13 +13,13 @@ pub fn command_launch(exec: &str, keyword: &str) -> Result<(), SherlockError> {
             let execute = parts.next().expect("No command found");
             let args: Vec<&str> = parts.collect();
 
-            if num_cmds > 1 {
-                let output = asynchronous_execution(execute, args)?;
-                println!("{}", output);
+            let _output = if num_cmds > 1 {
+                // Asynchronous execution (output)
+                asynchronous_execution(execute, args)?;
             } else {
                 // Synchronous execution (output)
                 synchronous_execution(execute, args)?;
-            }
+            };
         }
     }
     Ok(())
@@ -30,8 +30,7 @@ fn synchronous_execution(execute: &str, args: Vec<&str>) -> Result<String, Sherl
         .args(&args)
         .output()
         .map_err(|e| SherlockError {
-            name: "Command Execute Error".to_string(),
-            message: format!("Failed to execute synchronous command."),
+            error: SherlockErrorType::CommandExecutionError(format!("{}", execute)),
             traceback: e.to_string(),
         })?;
 
@@ -39,8 +38,7 @@ fn synchronous_execution(execute: &str, args: Vec<&str>) -> Result<String, Sherl
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {
         Err(SherlockError {
-            name: "Command Execute Error".to_string(),
-            message: format!("Failed to execute synchronous command."),
+            error: SherlockErrorType::CommandExecutionError(format!("{}", execute)),
             traceback: String::from_utf8_lossy(&output.stderr).to_string(),
         })
     }
@@ -50,8 +48,7 @@ fn asynchronous_execution(execute: &str, args: Vec<&str>) -> Result<String, Sher
         .args(&args)
         .spawn()
         .map_err(|e| SherlockError {
-            name: "Command Execute Error".to_string(),
-            message: format!("Failed to execute synchronous command."),
+            error: SherlockErrorType::CommandExecutionError(format!("{}", execute)),
             traceback: e.to_string(),
         })?;
 

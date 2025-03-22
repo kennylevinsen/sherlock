@@ -1,15 +1,19 @@
 use serde::Deserialize;
-use std::env;
+use std::{env, io};
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::{BufReader, BufRead, Read};
+use std::path::Path;
 use std::process::Command;
 
 #[derive(Deserialize, Debug)]
 pub struct CommandConfig {
     pub name: String,
     pub alias: Option<String>,
+    pub tag_start: Option<String>,
+    pub tag_end: Option<String>,
     pub display_name: Option<String>,
     pub on_return: Option<String>,
+    pub next_content: Option<String>,
     pub r#type: String,
     pub priority: u32,
 
@@ -26,6 +30,8 @@ pub struct AppData {
     pub icon: String,
     pub exec: String,
     pub search_string: String,
+    pub tag_start: Option<String>,
+    pub tag_end: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -35,6 +41,8 @@ pub struct SherlockFlags {
     pub style: String,
     pub ignore: String,
     pub alias: String,
+    pub display_raw: bool,
+    pub center_raw: bool,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -44,11 +52,81 @@ pub struct SherlockAlias {
     pub exec: Option<String>,
     pub keywords: Option<String>,
 }
+#[derive(Debug, Clone)]
+pub enum SherlockErrorType {
+    EnvVarNotFoundError(String),
+    FileExistError(String),
+    FileReadError(String),
+    FileParseError(String),
+    ResourceParseError,
+    ResourceLookupError(String),
+    DisplayError,
+    ConfigError(Option<String>),
+    RegexError(String),
+    CommandExecutionError(String),
+    ClipboardError,
+}
 
+impl SherlockErrorType {
+    pub fn get_message(&self) -> (String, String) {
+        match self {
+            SherlockErrorType::EnvVarNotFoundError(var) => (
+                "EnvVarNotFoundError".to_string(),
+                format!("Failed to unpack environment variable \"{}\"", var),
+            ),
+            SherlockErrorType::FileExistError(file) => (
+                "FileExistError".to_string(),
+                format!("File \"{}\" does not exist", file),
+            ),
+            SherlockErrorType::FileReadError(file) => (
+                "FileReadError".to_string(),
+                format!("Failed to read file \"{}\"", file),
+            ),
+            SherlockErrorType::FileParseError(file) => (
+                "FileParseError".to_string(),
+                format!("Failed to parse file \"{}\"", file),
+            ),
+            SherlockErrorType::ResourceParseError => (
+                "ResourceParseError".to_string(),
+                format!("Failed to parse resources"),
+            ),
+            SherlockErrorType::ResourceLookupError(resource) => (
+                "ResourceLookupError".to_string(),
+                format!("Failed to find resource \"{}\"", resource),
+            ),
+            SherlockErrorType::DisplayError => (
+                "DisplayError".to_string(),
+                "Could not connect to a display".to_string(),
+            ),
+            SherlockErrorType::ConfigError(val) => {
+                let message = if let Some(v) = val {
+                    format!("{}", v)
+                } else {
+                    "It should never come to this".to_string()
+                };
+                (
+                    "ConfigError".to_string(),
+                    message
+                )
+            },
+            SherlockErrorType::RegexError(key) => (
+                format!("RegexError"),
+                format!("Failed to compile the regular expression for \"{}\"", key),
+            ),
+            SherlockErrorType::CommandExecutionError(cmd) => (
+                format!("CommandExecutionError"),
+                format!("Failed to execute command \"{}\"", cmd),
+            ),
+            SherlockErrorType::ClipboardError => (
+                format!("ClipboardError"),
+                format!("Failed to get system clipboard"),
+            ),
+        }
+    }
+}
 #[derive(Clone, Debug)]
 pub struct SherlockError {
-    pub name: String,
-    pub message: String,
+    pub error: SherlockErrorType,
     pub traceback: String,
 }
 
@@ -81,6 +159,7 @@ impl Config {
                     gsk_renderer: "cairo".to_string(),
                     recolor_icons: false,
                     icon_paths: Default::default(),
+                    icon_size: default_icon_size(),
                 },
             },
             non_breaking,
@@ -119,6 +198,8 @@ pub struct ConfigAppearance {
     pub recolor_icons: bool,
     #[serde(default)]
     pub icon_paths: Vec<String>,
+    #[serde(default="default_icon_size")]
+    pub icon_size: i32,
 }
 
 pub fn read_file(file_path: &str) -> std::io::Result<String> {
@@ -129,9 +210,19 @@ pub fn read_file(file_path: &str) -> std::io::Result<String> {
     Ok(content)
 }
 
+pub fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where
+    P: AsRef<Path>,
+{
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
+
 pub fn default_terminal() -> String {
-    println!("didnt work");
     get_terminal().unwrap_or_default()
+}
+pub fn default_icon_size()->i32{
+    22
 }
 pub fn get_terminal() -> Result<String, SherlockError> {
     let mut terminal = None;
@@ -177,8 +268,7 @@ pub fn get_terminal() -> Result<String, SherlockError> {
         Ok(t)
     } else {
         Err(SherlockError{
-                name: "Terminal not Found Error".to_string(),
-                message: "Failed to parse default app 'Terminal'.".to_string(),
+                error: SherlockErrorType::ConfigError(Some("Failed to get terminal".to_string())),
                 traceback: "Unable to locate or parse a valid terminal app. Ensure that the terminal app is correctly specified in the configuration file or environment variables.".to_string(),
             })
     }

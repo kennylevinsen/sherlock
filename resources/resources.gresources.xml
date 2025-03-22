@@ -7,6 +7,7 @@
         <file alias="ui/calc_tile.ui">ui/calc_tile.ui</file>
         <file alias="ui/bulk_text_tile.ui">ui/bulk_text_tile.ui</file>
         <file alias="ui/simple_text_tile.ui">ui/simple_text_tile.ui</file>
+        <file alias="ui/text_view_tile.ui">ui/text_view_tile.ui</file>
         <file alias="ui/search.ui">ui/search.ui</file>
         <file alias="ui/error_tile.ui">ui/error_tile.ui</file>
         <file alias="ui/error_view.ui">ui/error_view.ui</file>

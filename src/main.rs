@@ -1,7 +1,11 @@
 use gio::prelude::*;
-use gtk4::{prelude::*, Application};
+use gtk4::{EventController, Stack, Widget};
+use gtk4::{prelude::*, Application, ApplicationWindow};
+use loader::util::SherlockErrorType;
+use std::cell::RefCell;
 use std::sync::OnceLock;
 use std::{env, process};
+use std::rc::Rc;
 
 mod actions;
 mod launcher;
@@ -13,7 +17,39 @@ use loader::{
     util::{Config, SherlockError},
     Loader,
 };
+use ui::util::show_stack_page;
 
+
+struct AppState{
+    window: Option<ApplicationWindow>,
+    stack: Option<Stack>,
+}
+impl AppState{
+    pub fn add_stack_page<T,U>(&self, child: T, name: U)
+    where 
+        T: IsA<Widget>,
+        U: AsRef<str>,
+    {
+        if let Some(stack) = &self.stack {
+            stack.add_named(&child, Some(name.as_ref()));
+        }
+    }
+
+    pub fn add_event_listener<T: IsA<EventController>>(&self, controller: T){
+        if let Some(window) = &self.window {
+            window.add_controller(controller);
+        }
+    }
+    pub fn remove_event_listener<T: IsA<EventController>>(&self, controller: &T){
+        if let Some(window) = &self.window {
+            window.remove_controller(controller);
+        }
+    }
+}
+
+thread_local! {
+    static APP_STATE: RefCell<Option<Rc<AppState>>> = RefCell::new(None);
+}
 static CONFIG: OnceLock<Config> = OnceLock::new();
 
 #[tokio::main]
@@ -45,8 +81,7 @@ async fn main() {
         Ok(_) => {}
         Err(_) => {
             startup_errors.push(SherlockError {
-                name: format!("Missing Config"),
-                message: format!("It should never come to this."),
+                error: SherlockErrorType::ConfigError(None),
                 traceback: format!(""),
             });
         }
@@ -60,6 +95,7 @@ async fn main() {
         gio::ApplicationFlags::HANDLES_COMMAND_LINE,
     );
 
+
     if let Some(config) = CONFIG.get() {
         env::set_var("GSK_RENDERER", &config.appearance.gsk_renderer);
     }
@@ -69,6 +105,7 @@ async fn main() {
         app.activate();
         0
     });
+
 
     application.connect_activate(move |app| {
         let mut error_list = startup_errors.clone();
@@ -91,39 +128,50 @@ async fn main() {
         non_breaking.extend(n);
 
         // Main logic for the Search-View
-        let (mut window, stack) = ui::window::window(&app);
+        let (window, stack) = ui::window::window(&app);
+        let state = Rc::new(AppState{
+            window: Some(window),
+            stack: Some(stack),
+        });
+        APP_STATE.with(|app_state| *app_state.borrow_mut() = Some(state));
 
         // Either show user-specified content or show normal search
-        window = {
-            let pipe = Loader::load_pipe_args();
-            if pipe.is_empty() {
-                ui::search::search(window, &stack, launchers)
+        let pipe = Loader::load_pipe_args();
+        if pipe.is_empty() {
+            ui::search::search(launchers);
+        } else {
+            if sherlock_flags.display_raw{
+                ui::user::display_raw(pipe, sherlock_flags.center_raw);
             } else {
                 let lines: Vec<String> = pipe
                     .split("\n")
                     .filter(|s| !s.is_empty())
                     .map(|s| s.to_string())
                     .collect();
-                ui::user::display_pipe(window, &stack, lines)
+                ui::user::display_pipe(lines);
             }
         };
+    
 
         // Logic for the Error-View
         if !app_config.debug.try_surpress_errors {
-            if !app_config.debug.try_surpress_warnings {
-                if !error_list.is_empty() || !non_breaking.is_empty() {
-                    window = ui::error_view::errors(window, &stack, &error_list, &non_breaking);
-                    stack.set_visible_child_name("error-page");
-                }
-            } else {
-                if !error_list.is_empty() {
-                    window = ui::error_view::errors(window, &stack, &error_list, &non_breaking);
-                    stack.set_visible_child_name("error-page");
-                }
+            let show_errors = !error_list.is_empty();
+            let show_warnings = !app_config.debug.try_surpress_warnings && !non_breaking.is_empty();
+            if show_errors || show_warnings {
+                ui::error_view::errors(&error_list, &non_breaking);
+                show_stack_page("error-page", None);
             }
         }
-        window.present();
+    
+        // Show window
+        APP_STATE.with(|state|{
+            if let Some(ref state) = *state.borrow(){
+                state.window.as_ref().map(|window| window.present());
+            }
+        });
     });
+
 
     application.run();
 }
+

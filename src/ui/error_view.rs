@@ -1,18 +1,17 @@
-use gtk4::{self, gdk::Key, prelude::*, ApplicationWindow, Builder, EventControllerKey, Stack};
+use gtk4::{self, gdk::Key, prelude::*, Builder, EventControllerKey};
 use gtk4::{Box as HVBox, ListBox, ScrolledWindow};
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::util::*;
 
+use crate::APP_STATE;
 use crate::{loader::util::SherlockError, ui::tiles::Tile};
 
 pub fn errors(
-    window: ApplicationWindow,
-    stack: &Stack,
     errors: &Vec<SherlockError>,
     non_breaking: &Vec<SherlockError>,
-) -> ApplicationWindow {
+) {
     let builder = Builder::from_resource("/dev/skxxtz/sherlock/ui/error_view.ui");
 
     let vbox: HVBox = builder.object("vbox").unwrap();
@@ -26,15 +25,16 @@ pub fn errors(
         .iter()
         .for_each(|tile| results.append(tile));
     error_tiles.iter().for_each(|tile| results.append(tile));
+    
+    APP_STATE.with(|state| {
+        if let Some(ref state) = *state.borrow(){
+            state.add_stack_page(vbox, "error-page");
+        }
+    });
+    nav_event(results, result_viewport);
 
-    stack.add_named(&vbox, Some("error-page"));
-    nav_event(&window, stack.clone(), results, result_viewport);
-
-    window
 }
 fn nav_event(
-    window: &ApplicationWindow,
-    stack: Stack,
     result_holder: ListBox,
     result_viewport: ScrolledWindow,
 ) {
@@ -43,7 +43,6 @@ fn nav_event(
 
     // Clone Rc references for use in the closure
     let event_controller_clone = Rc::clone(&event_controller);
-    let window_clone = window.clone();
 
     event_controller
         .borrow_mut()
@@ -61,8 +60,7 @@ fn nav_event(
                     true.into()
                 }
                 Key::Return => {
-                    stack.set_transition_type(gtk4::StackTransitionType::SlideLeft);
-                    stack.set_visible_child_name("search-page");
+                    show_stack_page("search-page", Some(gtk4::StackTransitionType::SlideLeft));
 
                     // Remove the event controller
                     if let Some(controller) = event_controller_clone
@@ -70,7 +68,11 @@ fn nav_event(
                         .clone()
                         .downcast_ref::<EventControllerKey>()
                     {
-                        window_clone.remove_controller(controller);
+                        APP_STATE.with(|state|{
+                            if let Some(ref state) = *state.borrow(){
+                                state.remove_event_listener(controller);
+                            }
+                        })
                     }
 
                     true.into()
@@ -78,6 +80,9 @@ fn nav_event(
                 _ => false.into(),
             }
         });
-
-    window.add_controller(event_controller.borrow().clone());
+    APP_STATE.with(|state|{
+        if let Some(ref state) = *state.borrow(){
+            state.add_event_listener(event_controller.borrow().clone());
+        }
+    })
 }

@@ -23,15 +23,16 @@ impl LockFile {
         }
     }
 
-    pub fn remove(&self) {
+    pub fn remove(&self) -> Result<(), String> {
         if let Err(e) = remove_file(&self.path) {
-            eprintln!("Failed to remove lock file: {}", e);
+            return Err(format!("Failed to remove lock file: {}", e));
         }
+        Ok(())
     }
 }
 
 impl Drop for LockFile {
     fn drop(&mut self) {
-        self.remove();
+        let _ = self.remove();
     }
 }

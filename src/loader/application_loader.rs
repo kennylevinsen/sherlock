@@ -2,10 +2,9 @@ use glob::Pattern;
 use rayon::prelude::*;
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs::{self, read_to_string};
-use std::path::Path;
+use std::fs::{self,  File};
 
-use super::util::{SherlockError, SherlockFlags};
+use super::util::{SherlockError, SherlockFlags, SherlockErrorType, read_lines};
 use super::{util, Loader};
 use crate::CONFIG;
 use util::{read_file, AppData, SherlockAlias};
@@ -15,13 +14,11 @@ impl Loader {
         sherlock_flags: &SherlockFlags,
     ) -> Result<HashMap<String, AppData>, SherlockError> {
         let config = CONFIG.get().ok_or(SherlockError {
-            name: format!("Missing Config"),
-            message: format!("It should never get to this."),
+            error: SherlockErrorType::ConfigError(None),
             traceback: format!(""),
         })?;
+
         // Define required paths for application parsing
-        let sherlock_ignore_path = sherlock_flags.ignore.clone();
-        let sherlock_alias_path = sherlock_flags.alias.clone();
         let system_apps = "/usr/share/applications/";
 
         // Parse needed fields from the '.desktop'
@@ -36,36 +33,30 @@ impl Loader {
         };
 
         // Parse user-specified 'sherlockignore' file
-        let mut ignore_apps: Vec<Pattern> = Default::default();
-        if Path::new(&sherlock_ignore_path).exists() {
-            ignore_apps = read_to_string(&sherlock_ignore_path)
-                .map_err(|e| SherlockError {
-                    name: "File Read Error".to_string(),
-                    message: format!("Failed to read the file at '{}'", sherlock_ignore_path),
-                    traceback: e.to_string(),
-                })?
-                .lines()
-                .filter_map(|line| {
-                    let line = line.to_lowercase();
-                    Pattern::new(&line).ok()
-                })
-                .collect::<Vec<Pattern>>();
-        }
+        let ignore_apps: Vec<Pattern> = match read_lines(&sherlock_flags.ignore){
+            Ok(lines) => lines
+                .map_while(Result::ok)
+                .filter_map(|line| Pattern::new(&line.to_lowercase()).ok())
+                .collect(),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Default::default(),
+            Err(e) => Err(SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.ignore.to_string()),
+                traceback: e.to_string(),
+            })?,
+        };
 
         // Parse user-specified 'sherlock_alias.json' file
-        let mut aliases: HashMap<String, SherlockAlias> = Default::default();
-        if Path::new(&sherlock_alias_path).exists() {
-            let json_data = read_to_string(&sherlock_alias_path).map_err(|e| SherlockError {
-                name: "File Read Error".to_string(),
-                message: format!("Failed to read the file at '{}'", sherlock_alias_path),
+        let aliases: HashMap<String, SherlockAlias> = match File::open(&sherlock_flags.alias){
+            Ok(f) => serde_json::from_reader(f).map_err(|e| SherlockError {
+                error: SherlockErrorType::FileReadError(sherlock_flags.alias.to_string()),
                 traceback: e.to_string(),
-            })?;
-            aliases = serde_json::from_str(&json_data).map_err(|e| SherlockError {
-                name: "File Parse Error".to_string(),
-                message: format!("Failed to parse '{}' as valid json", sherlock_alias_path),
+            })?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Default::default(),
+            Err(e) => Err(SherlockError{
+                error: SherlockErrorType::FileReadError(sherlock_flags.alias.to_string()),
                 traceback: e.to_string(),
-            })?
-        }
+            })?,
+        };
 
         // Gather '.desktop' files
         let dektop_files: Vec<_> = fs::read_dir(system_apps)
@@ -139,6 +130,8 @@ impl Loader {
                         icon,
                         exec,
                         search_string,
+                        tag_start: None,
+                        tag_end: None,
                     },
                 ))
             })
@@ -153,49 +146,18 @@ fn should_ignore(ignore_apps: &Vec<Pattern>, app: &String) -> bool {
 }
 
 fn get_regex_patterns() -> Result<(Regex, Regex, Regex, Regex, Regex, Regex), SherlockError> {
-    let name_re = Regex::new(r"(?i)Name\s*=\s*(.*)\n").map_err(|e| SherlockError {
-        name: "Regex Compilation Error".to_string(),
-        message: format!("Failed to compile the regular expression for 'Name'"),
-        traceback: e.to_string(),
-    })?;
-
-    let icon_re = Regex::new(r"(?i)Icon\s*=\s*(.*)\n").map_err(|e| SherlockError {
-        name: "Regex Compilation Error".to_string(),
-        message: format!("Failed to compile the regular expression for 'Icon'"),
-        traceback: e.to_string(),
-    })?;
-
-    let exec_re = Regex::new(r"(?i)Exec\s*=\s*(.*)\n").map_err(|e| SherlockError {
-        name: "Regex Compilation Error".to_string(),
-        message: format!("Failed to compile the regular expression for 'Exec'"),
-        traceback: e.to_string(),
-    })?;
-
-    let display_re = Regex::new(r"(?i)NoDisplay\s*=\s*(.*)\n").map_err(|e| SherlockError {
-        name: "Regex Compilation Error".to_string(),
-        message: format!("Failed to compile the regular expression for 'NoDisplay'"),
-        traceback: e.to_string(),
-    })?;
-
-    let terminal_re = Regex::new(r"(?i)Terminal\s*=\s*(.*)\n").map_err(|e| SherlockError {
-        name: "Regex Compilation Error".to_string(),
-        message: format!("Failed to compile the regular expression for 'Terminal'"),
-        traceback: e.to_string(),
-    })?;
-
-    let keywords_re = Regex::new(r"(?i)Keywords\s*=\s*(.*)\n").map_err(|e| SherlockError {
-        name: "Regex Compilation Error".to_string(),
-        message: format!("Failed to compile the regular expression for 'Keywords'"),
-        traceback: e.to_string(),
-    })?;
-
-    // Return the tuple of compiled Regexes
-    Ok((
-        name_re,
-        icon_re,
-        exec_re,
-        display_re,
-        terminal_re,
-        keywords_re,
-    ))
+    fn construct_pattern(key: &str) -> Result<Regex, SherlockError> {
+        let pattern = format!(r"(?i){}\s*=\s*(.*)\n", key);
+        Regex::new(&pattern).map_err(|e| SherlockError {
+            error: SherlockErrorType::RegexError(key.to_string()),
+            traceback: e.to_string(),
+        })
+    }
+    let name = construct_pattern("Name")?;
+    let icon = construct_pattern("Icon")?;
+    let exec = construct_pattern("Exec")?;
+    let display = construct_pattern("NoDisplay")?;
+    let terminal = construct_pattern("Terminal")?;
+    let keywords = construct_pattern("Keywords")?;
+    return Ok((name, icon, exec, display, terminal, keywords));
 }
