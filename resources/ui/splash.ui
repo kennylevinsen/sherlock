@@ -7,43 +7,74 @@
 
         <child>
             <object class="GtkBox">
-                <property name="orientation">horizontal</property>
-                <property name="spacing">0</property>
+                <property name="orientation">vertical</property>
                 <property name="hexpand">true</property>
                 <child>
-                    <object class="GtkBox" id="attrs-holder">
-                        <property name="visible">false</property>
-                    </object>
-                </child>
-
-                <child>
-                    <object class="GtkLabel" id="time-bar">
-                        <property name="label">01:23</property>
-                        <property name="name">time-bar</property>
-                    </object>
-                </child>
-
-                <child>
-                    <object class="GtkBox" id="date-time-box">
-                        <property name="orientation">vertical</property>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">0</property>
                         <property name="hexpand">true</property>
-                        <property name="name">date-time-box</property>
+
                         <child>
-                            <object class="GtkLabel" id="date-top">
-                                <property name="label">Wednesday, week 10</property>
-                                <property name="name">date-top</property>
-                                <property name="halign">end</property>
+                            <object class="GtkLabel" id="time-bar">
+                                <property name="label">01:23</property>
+                                <property name="name">time-bar</property>
                             </object>
                         </child>
+
                         <child>
-                            <object class="GtkLabel" id="date-bottom">
-                                <property name="label">01 February 2025</property>
-                                <property name="name">date-bottom</property>
-                                <property name="halign">end</property>
+                            <object class="GtkBox" id="date-time-box">
+                                <property name="orientation">vertical</property>
+                                <property name="hexpand">true</property>
+                                <property name="name">date-time-box</property>
+                                <child>
+                                    <object class="GtkLabel" id="date-top">
+                                        <property name="label">Wednesday, week 10</property>
+                                        <property name="name">date-top</property>
+                                        <property name="halign">end</property>
+                                    </object>
+                                </child>
+                                <child>
+                                    <object class="GtkLabel" id="date-bottom">
+                                        <property name="label">01 February 2025</property>
+                                        <property name="name">date-bottom</property>
+                                        <property name="halign">end</property>
+                                    </object>
+                                </child>
                             </object>
                         </child>
                     </object>
                 </child>
+
+                <child>
+                    <object class="GtkBox">
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">0</property>
+                        <property name="hexpand">true</property>
+
+                        <child>
+                            <object class="GtkLabel" id="battery-bar">
+                                <property name="label">Battery</property>
+                                <property name="name">battery-bar</property>
+                            </object>
+                        </child>
+
+                        <child>
+                            <object class="GtkProgressBar" id="battery-value">
+                                <property name="name">battery-value</property>
+                                <property name="hexpand">true</property>
+                            </object>
+                        </child>
+                    </object>
+                </child>
+
+                <child>
+                    <object class="GtkCalendar" id="calendar">
+                        <property name="name">calendar</property>
+                        <property name="show_week_numbers">true</property>
+                    </object>
+                </child>
+
             </object>
         </child>
     </object>

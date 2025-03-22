@@ -4,7 +4,6 @@
     --text: 53, 100%, 97%;
     --border: 0, 0%, 19%;
 
-
     --tag-background: 180, 13%, 37%;
     --tag-color: 220, 10%, 100%;
     --error: 4, 71%, 62%;
@@ -26,7 +25,7 @@ overshoot.left undershoot.top,
 undershoot.right,
 undershoot.bottom,
 undershoot.left,
-.scroll-window>*,
+.scroll-window > *,
 overshoot:backdrop {
     background: none;
     border: none;
@@ -43,7 +42,7 @@ overshoot:backdrop {
     line-height: 1;
 }
 
-#overlay spinner{
+#overlay spinner {
     color: hsl(var(--text));
 }
 #overlay * {
@@ -53,13 +52,12 @@ overshoot:backdrop {
     background: transparent;
 }
 
-scrolledwindow>viewport *,
-scrolledwindow>viewport,
+scrolledwindow > viewport *,
+scrolledwindow > viewport,
 window,
 box {
     background: hsl(var(--background));
 }
-
 
 window {
     color: hsl(var(--text));
@@ -82,14 +80,74 @@ window {
     min-height: 0;
     font-size: 28px;
     padding-top: 16px;
-    padding-right: 20px;
+    padding-right: 10px;
 }
 
 #date-bottom {
     outline: none;
     color: hsl(var(--text));
     font-size: 44px;
-    padding-right: 20px;
+    padding-right: 10px;
+}
+
+#battery-bar {
+    font-size: 20px;
+    padding-left: 10px;
+    padding-top: 16px;
+}
+
+#battery-value trough {
+    min-height: 10px;
+    outline: none;
+    border: 2px solid hsl(var(--border));
+    border-radius: 5px;
+}
+
+#battery-value progress {
+    min-height: 8px;
+    border: none;
+}
+
+.battery-charging progress,
+.battery-fully-charged progress {
+    background-color: green;
+}
+.battery-unknown progress,
+.battery-empty progress,
+.battery-alert progress,
+.battery-critical progress,
+.battery-action progress {
+    background-color: red;
+}
+.battery-low progress {
+    background-color: darkorange;
+}
+.battery-discharging progress,
+.battery-pending-charge progress,
+.battery-pending-discharge progress {
+    background-color: white;
+}
+
+#battery-value {
+    padding-left: 20px;
+    padding-right: 10px;
+    padding-top: 24px;
+}
+
+#calendar {
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-top: 24px;
+}
+
+#calendar grid label.week-number {
+    color: gray;
+}
+#calendar grid label.today {
+    font-weight: 800;
+}
+#calendar grid label:selected {
+    background-color: darkred;
 }
 
 /* SEARCH PAGE */
@@ -142,7 +200,6 @@ scrollbar slider {
     border: none;
 }
 
-
 image {
     color: white;
 }
@@ -155,20 +212,40 @@ image {
     border-radius: 4px;
 }
 .tile.animate {
-    transform: translateY(20px); 
+    transform: translateY(20px);
     opacity: 0;
     animation: fadeInUp 0.2s ease-out forwards;
 }
-.tile.animate:nth-child(1) { animation-delay: 0.05s; }
-.tile.animate:nth-child(2) { animation-delay: 0.1s; }
-.tile.animate:nth-child(3) { animation-delay: 0.15s; }
-.tile.animate:nth-child(4) { animation-delay: 0.2s; }
-.tile.animate:nth-child(5) { animation-delay: 0.25s; }
-.tile.animate:nth-child(6) { animation-delay: 0.3s; }
-.tile.animate:nth-child(7) { animation-delay: 0.35s; }
-.tile.animate:nth-child(8) { animation-delay: 0.4s; }
-.tile.animate:nth-child(9) { animation-delay: 0.45s; }
-.tile.animate:nth-child(10) { animation-delay: 0.5s; }
+.tile.animate:nth-child(1) {
+    animation-delay: 0.05s;
+}
+.tile.animate:nth-child(2) {
+    animation-delay: 0.1s;
+}
+.tile.animate:nth-child(3) {
+    animation-delay: 0.15s;
+}
+.tile.animate:nth-child(4) {
+    animation-delay: 0.2s;
+}
+.tile.animate:nth-child(5) {
+    animation-delay: 0.25s;
+}
+.tile.animate:nth-child(6) {
+    animation-delay: 0.3s;
+}
+.tile.animate:nth-child(7) {
+    animation-delay: 0.35s;
+}
+.tile.animate:nth-child(8) {
+    animation-delay: 0.4s;
+}
+.tile.animate:nth-child(9) {
+    animation-delay: 0.45s;
+}
+.tile.animate:nth-child(10) {
+    animation-delay: 0.5s;
+}
 
 @keyframes fadeInUp {
     from {
@@ -191,7 +268,7 @@ image {
     padding: 0px;
 }
 
-#color-icon-holder{
+#color-icon-holder {
     border-radius: 50px;
 }
 
@@ -232,7 +309,6 @@ image {
     margin-left: 0px;
 }
 
-
 /*SHORTCUT*/
 #shortcut-holder {
     margin-right: 25px;
@@ -271,14 +347,11 @@ image {
     color: gray;
 }
 
-
-
 /* BULK TEXT TILE */
 .bulk-text {
     padding-bottom: 10px;
     min-height: 50px;
 }
-
 
 #bulk-text-title {
     margin-left: 10px;
@@ -312,7 +385,7 @@ image {
     color: hsl(var(--text));
 }
 .raw_text .next_tile #content-body {
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     font-feature-settings: "kern" off;
     font-kerning: None;
 }
@@ -366,9 +439,6 @@ image {
     color: gray;
 }
 
-
-
-
 @keyframes slide {
     from {
         transform: translate(0px, 0px);
@@ -378,4 +448,3 @@ image {
         transform: translate(-20px, 0px);
     }
 }
-
